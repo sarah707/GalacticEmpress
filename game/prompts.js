@@ -364,7 +364,7 @@ function eventSpec(type, context = {}) {
   const extractionSettlement = selected.length
     ? `\n本次程序结算信息：${selected.map((character) => {
       const effect = geneExtractionEffect(character);
-      return `${character.name}的健康度将减少${effect.healthLoss}，<user>将获得生命能量${effect.lifeEnergy}`;
+      return `<user>将获得${character.name}的生命能量${effect.lifeEnergy}`;
     }).join('；')}。这些数值用于确保剧情与结算后的身体状态一致，但正文不得直接写出具体数值。`
     : '';
   const specs = {

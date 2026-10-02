@@ -1,11 +1,11 @@
-import { makeGenerationId, sanitizeAiText } from './text.js?build=20261002145614';
-import { buildExportWorldbook } from './worldbook.js?build=20261002145614';
-import { BUILTIN_PRESET_SETTINGS, cloneBuiltInRequestPreset } from './builtin-preset.js?build=20261002145614';
+import { makeGenerationId, sanitizeAiText } from './text.js?build=20261002150215';
+import { buildExportWorldbook } from './worldbook.js?build=20261002150215';
+import { BUILTIN_PRESET_SETTINGS, cloneBuiltInRequestPreset } from './builtin-preset.js?build=20261002150215';
 import {
   decodeStorageValue,
   encodeStorageValue,
   isStorageEnvelope
-} from '../storage-codec.js?build=20261002145614';
+} from '../storage-codec.js?build=20261002150215';
 
 export const BRIDGE_KEY = '__GALACTIC_EMPRESS_TAVERN_BRIDGE_V1__';
 export const CHAT_STORAGE_VARIABLE = '$galacticEmpressGameStorage';
