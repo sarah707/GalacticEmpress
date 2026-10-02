@@ -1,4 +1,4 @@
-import { createLatestWinsSaveQueue } from './save-queue.js?build=20261002181216';
+import { createLatestWinsSaveQueue } from './save-queue.js?build=20261002181754';
 
 /** Local durability is the interaction boundary. Tavern is a background replica. */
 export function createSaveController({ writeLocal, writeRemote, onError = () => {}, delay = 500 }) {
