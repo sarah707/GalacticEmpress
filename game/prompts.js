@@ -382,7 +382,7 @@ function eventSpec(type, context = {}) {
     },
     gene: {
       characterMode: 'selected', requiresCharacter: false,
-      prompt: `请编写<user>在${primary}的房间要求他和自己交合的剧情（注意这里是正常的对话，不要略写成“她表示”这样的略写，对话要体现出<user>的性格特征）。要深入刻画角色的内心对这件事的看法和对<user>的感情，${genepromptadd1}要写出角色魅力和情感的拉扯。做爱描写要细腻并贴合角色性格。不用每次都强调<user>获得了生命能量，每次都说的话容易变得流程化不好看。本章重点：${writecontent}可以思考在剧情里加入一些生活、爱好、对未来的看法之类的交流来拓展剧情。做爱后的对话要有事后感，不要立刻切换话题。注意不要使用和之前章节类似的对话。结尾要结得很干净，文字里不要牵扯任何具体数字。${extractionSettlement}`
+      prompt: `请编写<user>在${primary}的房间要求他和自己交合的剧情（注意这里是正常的对话，不要略写成“她表示”这样的略写，对话要体现出<user>的性格特征），这个要求可以是直白的要求，也可以是诱惑或暗示。要深入刻画角色的内心对这件事的看法和对<user>的感情，${genepromptadd1}要写出角色魅力和情感的拉扯。做爱描写要细腻并贴合角色性格。不用每次都强调<user>获得了生命能量，每次都说的话容易变得流程化不好看。本章重点：${writecontent}可以思考在剧情里加入一些生活、爱好、对未来的看法之类的交流来拓展剧情。做爱后的对话要有事后感，不要立刻切换话题。注意不要使用和之前章节类似的对话。结尾要结得很干净，文字里不要牵扯任何具体数字。${extractionSettlement}`
     },
     multiGene: {
       characterMode: 'selected', requiresCharacter: false,
