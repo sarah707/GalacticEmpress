@@ -348,7 +348,7 @@ export function chooseGeneReflectionPrompt(character, random = Math.random) {
 
 export function chooseGeneOpeningPrompt(character) {
   return clampInt(character?.love, 0, 100) >= 60
-    ? '两人自然而然的进入做爱的剧情'
+    ? '两人自然而然的进入做爱（不再是<user>主动要求）的剧情'
     : '要求他和自己交合的剧情';
 }
 
