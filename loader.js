@@ -1,10 +1,10 @@
-import { BRIDGE_KEY, createTavernBridge } from './bridge/tavern.js?build=20261002024937';
+import { BRIDGE_KEY, createTavernBridge } from './bridge/tavern.js?build=20261002141214';
 import {
   clampFloatingPosition,
   getDefaultMinimizedPosition,
   getVisibleViewportBounds
-} from './overlay-position.js?build=20261002024937';
-import { getActiveChatSnapshot, subscribeToChatChanges } from './chat-lifecycle.js?build=20261002024937';
+} from './overlay-position.js?build=20261002141214';
+import { getActiveChatSnapshot, subscribeToChatChanges } from './chat-lifecycle.js?build=20261002141214';
 
 const OVERLAY_ID = 'galactic-empress-overlay';
 const STYLE_ID = 'galactic-empress-overlay-style';
