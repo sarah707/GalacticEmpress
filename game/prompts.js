@@ -405,14 +405,6 @@ function eventSpec(type, context = {}) {
   return spec;
 }
 
-function chapterAsAssistant(chapter) {
-  return [
-    `<chapter>${chapter?.title || '未命名事件'}</chapter>`,
-    `<content>${chapter?.content || ''}</content>`,
-    `<newHistory>${chapter?.history || ''}</newHistory>`
-  ].join('\n');
-}
-
 export function buildEventPayload(state, request = {}) {
   const type = request.type;
   const requestedCharacters = selectedCharacters(state, request.characterIds || []);
@@ -424,24 +416,6 @@ export function buildEventPayload(state, request = {}) {
   const promptCharacters = baseSpec.characterMode === 'all'
     ? (state.characters || [])
     : baseSpec.characterMode === 'selected' ? requestedCharacters : [];
-  const chapters = state.chapters || [];
-  let recent;
-  if (type === 'victory') {
-    recent = chapters.slice(-6);
-  } else if (type === 'gene') {
-    const latest = chapters.at(-1);
-    const requestedCharacterIds = new Set(requestedCharacters.map((character) => character.id));
-    const belongsToRequestedCharacter = (chapter) => (
-      (chapter?.characterIds || []).some((id) => requestedCharacterIds.has(id))
-      || requestedCharacters.some((character) => character.storyIds?.includes(chapter?.id))
-    );
-    const characterRecent = (latest ? chapters.slice(0, -1) : chapters)
-      .filter(belongsToRequestedCharacter)
-      .slice(-5);
-    recent = latest ? [...characterRecent, latest] : characterRecent;
-  } else {
-    recent = chapters.filter((chapter) => chapter.eventType === type).slice(-6);
-  }
   const playerName = state.player?.name || '<user>';
   const conquestStatus = `当前<user>统治了宇宙的${clampInt(state.conquest, 0, 100)}%。`;
   const history = (state.history || []).map((item) => typeof item === 'string' ? item : item?.text).filter(Boolean);
@@ -456,7 +430,7 @@ export function buildEventPayload(state, request = {}) {
       deferAssistantChatWrite: type === 'start',
       scriptSettingsInstruction: expand(buildScriptSettings(state, promptCharacters, { random: request.random })),
       historySystemInstruction: expand(`<History>\n${history.length ? history.join('\n') : '无'}\n</History>`),
-      assistantInstructions: recent.map((chapter) => expand(chapterAsAssistant(chapter))),
+      assistantInstructions: [],
       locationInstruction: expand(locations.join('\n\n')),
       outputFormatInstruction: expand(buildOutputFormat(baseSpec.requiresCharacter)),
       writingPointsInstruction: expand(WRITING_POINTS)

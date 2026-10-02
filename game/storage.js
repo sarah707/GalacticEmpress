@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, patchState, serializeState } from './game-core.js?build=20261002163531';
+import { SCHEMA_VERSION, patchState, serializeState } from './game-core.js?build=20261002181216';
 
 export function createManualSaveSnapshot(state) {
   const stored = serializeState(state, {
