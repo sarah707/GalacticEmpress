@@ -26,7 +26,7 @@ import {
   totalCombatPower,
   uid,
   withCacheBust
-} from './game-core.js?build=20261003023639';
+} from './game-core.js?build=20261003041758';
 import {
   WORLD_BUILDING,
   buildAvatarPrompt,
@@ -35,12 +35,12 @@ import {
   defaultPlayerPrompt,
   normalizeGeneratedCharacter,
   parseEventOutput
-} from './prompts.js?build=20261003023639';
-import { copyTextToClipboard } from './clipboard.js?build=20261003023639';
-import { createManualSaveSnapshot, decodeManualSaveSnapshot } from './storage.js?build=20261003023639';
-import { createLocalStore } from './local-store.js?build=20261003023639';
-import { createSaveController } from './save-controller.js?build=20261003023639';
-import { normalizePortableImageUrls } from '../storage-codec.js?build=20261003023639';
+} from './prompts.js?build=20261003041758';
+import { copyTextToClipboard } from './clipboard.js?build=20261003041758';
+import { createManualSaveSnapshot, decodeManualSaveSnapshot } from './storage.js?build=20261003041758';
+import { createLocalStore } from './local-store.js?build=20261003041758';
+import { createSaveController } from './save-controller.js?build=20261003041758';
+import { normalizePortableImageUrls } from '../storage-codec.js?build=20261003041758';
 
 const app = document.querySelector('#app');
 const modalLayer = document.querySelector('#modal-layer');
