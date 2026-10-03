@@ -26,7 +26,7 @@ import {
   totalCombatPower,
   uid,
   withCacheBust
-} from './game-core.js?build=20261002223540';
+} from './game-core.js?build=20261003022822';
 import {
   WORLD_BUILDING,
   buildAvatarPrompt,
@@ -35,12 +35,12 @@ import {
   defaultPlayerPrompt,
   normalizeGeneratedCharacter,
   parseEventOutput
-} from './prompts.js?build=20261002223540';
-import { copyTextToClipboard } from './clipboard.js?build=20261002223540';
-import { createManualSaveSnapshot, decodeManualSaveSnapshot } from './storage.js?build=20261002223540';
-import { createLocalStore } from './local-store.js?build=20261002223540';
-import { createSaveController } from './save-controller.js?build=20261002223540';
-import { normalizePortableImageUrls } from '../storage-codec.js?build=20261002223540';
+} from './prompts.js?build=20261003022822';
+import { copyTextToClipboard } from './clipboard.js?build=20261003022822';
+import { createManualSaveSnapshot, decodeManualSaveSnapshot } from './storage.js?build=20261003022822';
+import { createLocalStore } from './local-store.js?build=20261003022822';
+import { createSaveController } from './save-controller.js?build=20261003022822';
+import { normalizePortableImageUrls } from '../storage-codec.js?build=20261003022822';
 
 const app = document.querySelector('#app');
 const modalLayer = document.querySelector('#modal-layer');
@@ -54,6 +54,7 @@ let busy = false;
 let modalContext = null;
 let modalReturnFocus = null;
 let storageErrorShown = false;
+let temporaryPromptContentEnabled = false;
 const avatarJobs = new Set();
 const localStore = createLocalStore();
 const saves = createSaveController({
@@ -342,8 +343,12 @@ function openStory(chapter, applyPending = false) {
 function showError(error) {
   const message = String(error.message || error);
   const modeLabel = state.settings.textPresetMode === 'builtin' ? '使用角色卡自带预设' : '使用当前酒馆预设';
-  showModal('剧情生成未完成', `<p>${escapeHtml(message)}</p><p class="small">本次事件和数值状态已经保留。重试会沿用同一恢复标识，避免重复结算。</p><p class="small">当前预设模式：${modeLabel}</p>`,
-    '<button class="btn secondary" data-action="switch-preset-mode">切换预设模式</button><button class="btn" data-action="retry-story">重试剧情生成</button>',
+  const temporaryPromptLabel = `${temporaryPromptContentEnabled ? '关闭' : '开启'}临时修改提示词内容以增加破甲率`;
+  const recentContextLabel = temporaryPromptContentEnabled
+    ? '已开启：下一次发送携带最近6章剧情，发送后自动关闭。'
+    : '已关闭：发送时只携带最近1章剧情。';
+  showModal('剧情生成未完成', `<p>${escapeHtml(message)}</p><p class="small">本次事件和数值状态已经保留。重试会沿用同一恢复标识，避免重复结算。</p><p class="small">当前预设模式：${modeLabel}</p><p class="small">${recentContextLabel}</p>`,
+    `<button class="btn secondary wide" data-action="toggle-temporary-prompt-content" aria-pressed="${temporaryPromptContentEnabled}">${temporaryPromptLabel}</button><button class="btn secondary" data-action="switch-preset-mode">切换预设模式</button><button class="btn" data-action="retry-story">重试剧情生成</button>`,
     { type: 'generation-error', message });
 }
 
@@ -405,7 +410,11 @@ async function runPendingStory() {
     // A previous attempt may have finished after the failure dialog appeared.
     // Consume its durable backup before starting another paid generation.
     if (await recoverPendingGeneration()) return;
-    const payload = buildEventPayload(state, pending.request);
+    const payload = buildEventPayload(state, {
+      ...pending.request, useExtendedRecentContext: temporaryPromptContentEnabled
+    });
+    // Consume only when submitting a new story request, after backup recovery.
+    temporaryPromptContentEnabled = false;
     const result = await submitAiJob(payload, '等待生成剧情');
     const text = resultText(result);
     if (!text) throw new Error('AI 返回内容为空。');
@@ -819,6 +828,7 @@ async function manualLoad(index) {
       method: 'POST', body: JSON.stringify({ data: decoded })
     });
     state = patchState(resolved.data);
+    temporaryPromptContentEnabled = false;
     state.manualSaves = slots;
     render();
     await saveNow();
@@ -950,6 +960,10 @@ modalLayer.addEventListener('click', async (event) => {
     hideModal();
     if (shouldApply && !state.tutorialComplete && chapterId === state.introChapterId) await completeTutorial();
     else if (shouldApply) await commitPendingEffects();
+  } else if (action === 'toggle-temporary-prompt-content') {
+    if (modalContext?.type !== 'generation-error') return;
+    temporaryPromptContentEnabled = !temporaryPromptContentEnabled;
+    showError(new Error(modalContext.message));
   } else if (action === 'switch-preset-mode') {
     const message = modalContext?.message || '剧情生成未完成。';
     state.settings.textPresetMode = state.settings.textPresetMode === 'builtin' ? 'tavern' : 'builtin';
