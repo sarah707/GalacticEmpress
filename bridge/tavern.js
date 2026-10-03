@@ -216,6 +216,8 @@ function enhanceGenerationError(error, captured = {}, context = {}) {
     `失败阶段：${context.stage || '等待酒馆生成结果'}`,
     `酒馆接口：${httpStatus}`
   ];
+  lines.push(`SillyTavern 版本：${context.runtimeVersions?.sillyTavern || '无法读取'}`);
+  lines.push(`酒馆助手版本：${context.runtimeVersions?.tavernHelper || '无法读取'}`);
   if (captured.endpoint) lines.push(`请求路径：${captured.endpoint}`);
   if (context.elapsedMs !== undefined) lines.push(`本次耗时：${(context.elapsedMs / 1000).toFixed(1)} 秒`);
   if (captured.transportError) lines.push('连接在返回 HTTP 响应前失败，浏览器未提供服务端响应正文。');
@@ -279,6 +281,19 @@ function getHostContexts(hostWindow, apiWindow) {
     }
   }
   return contexts;
+}
+
+function getRuntimeVersions(hostWindow, apiWindow) {
+  // Host-provided Helper 4.9.5: src/function/version.ts and @types/function/version.d.ts.
+  // Both documented methods return strings synchronously; no private DOM lookup.
+  const surfaces = collectApiSurfaces(hostWindow, apiWindow);
+  const read = (method) => {
+    const value = callFirstAvailable(surfaces, method);
+    return typeof value === 'string' && value.trim()
+      ? redactDiagnosticText(value).replace(/[\r\n]/g, ' ').trim().slice(0, 100)
+      : '无法读取';
+  };
+  return { sillyTavern: read('getTavernVersion'), tavernHelper: read('getTavernHelperVersion') };
 }
 
 function getHostContext(hostWindow, apiWindow) {
@@ -418,6 +433,71 @@ export function buildBuiltInPromptMessages(payload) {
   return messages;
 }
 
+function buildLegacyBuiltInRequest(context, preset, model, messages) {
+  // Host-provided ST 1.13.4 public/scripts/custom-request.js#L384,L521:
+  // presetToGeneratePayload only converts temperature (ignores argument 3).
+  // Route via its public createRequestData API using the current connection only.
+  // Provider fields: https://github.com/SillyTavern/SillyTavern/blob/1.13.4/public/scripts/openai.js#L2048
+  const settings = context.chatCompletionSettings;
+  const source = settings?.chat_completion_source;
+  if (typeof context.ChatCompletionService.createRequestData !== 'function' || !source || !model) {
+    throw new Error('旧版酒馆未提供完整聊天补全连接信息，无法使用内置预设；请切换酒馆预设模式或更新 SillyTavern。本次未发送模型请求。');
+  }
+  const request = {
+    type: 'quiet', messages, model, chat_completion_source: source,
+    stream: false, max_tokens: preset.openai_max_tokens,
+    temperature: preset.temperature, top_p: preset.top_p,
+    frequency_penalty: preset.frequency_penalty, presence_penalty: preset.presence_penalty,
+    include_reasoning: false, reasoning_effort: preset.reasoning_effort,
+    enable_web_search: false, request_images: false, custom_prompt_post_processing: ''
+  };
+  // Whitelist routing/authentication fields, never copy the user's prompts,
+  // sampling settings, tools, extra request body, Persona or worldbooks.
+  const copy = (keys) => {
+    for (const key of keys) {
+      if (settings[key] !== undefined) request[key] = JSON.parse(JSON.stringify(settings[key]));
+    }
+  };
+  if (['claude', 'openai', 'mistralai', 'makersuite', 'vertexai', 'deepseek', 'xai'].includes(source)) {
+    copy(['reverse_proxy', 'proxy_password']);
+  }
+  if (source === 'custom') {
+    copy(['custom_url', 'custom_include_headers']);
+    request.custom_include_body = '';
+    request.custom_exclude_body = '';
+  }
+  if (source === 'vertexai') copy(['vertexai_auth_mode', 'vertexai_region', 'vertexai_express_project_id']);
+  if (source === 'azure_openai') copy(['azure_base_url', 'azure_deployment_name', 'azure_api_version']);
+  if (['claude', 'makersuite', 'vertexai', 'openrouter', 'cohere', 'perplexity', 'electronhub'].includes(source)) request.top_k = preset.top_k;
+  if (source === 'openrouter') {
+    Object.assign(request, {
+      min_p: preset.min_p, repetition_penalty: preset.repetition_penalty, top_a: preset.top_a,
+      middleout: preset.openrouter_middleout,
+      provider: Array.isArray(settings.openrouter_providers) ? [...settings.openrouter_providers] : undefined,
+      allow_fallbacks: settings.openrouter_allow_fallbacks, use_fallback: settings.openrouter_use_fallback
+    });
+  }
+  if (source === 'mistralai') request.safe_prompt = false;
+  if (source === 'pollinations') delete request.max_tokens;
+  if (source === 'xai' && /grok-4|grok-3-mini/.test(model)) {
+    delete request.frequency_penalty;
+    delete request.presence_penalty;
+    if (model.includes('grok-4')) delete request.reasoning_effort;
+  }
+  if (['openai', 'azure_openai'].includes(source)) {
+    if (/^gpt-[34]/.test(model) && source === 'azure_openai') delete request.reasoning_effort;
+    if (/^(o1|o3|o4|gpt-5)/.test(model)) {
+      request.max_completion_tokens = request.max_tokens;
+      delete request.max_tokens;
+      if (!model.includes('chat-latest')) {
+        for (const key of ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty']) delete request[key];
+      }
+      if (model.startsWith('o1')) request.messages = messages.map((message) => ({ ...message, role: message.role === 'system' ? 'user' : message.role }));
+    }
+  }
+  return context.ChatCompletionService.createRequestData(request);
+}
+
 async function buildBuiltInRequest(hostWindow, apiWindow, payload) {
   const context = getHostContexts(hostWindow, apiWindow).find((item) => (
     typeof item?.ChatCompletionService?.presetToGeneratePayload === 'function'
@@ -434,10 +514,18 @@ async function buildBuiltInRequest(hostWindow, apiWindow, payload) {
   // ST 1.19.0 custom-request.js: literal preset -> cloned settings -> native
   // provider conversion. Unlike Helper generate/generateRaw this does not scan
   // worldbooks or invoke prompt/regex events. It never mutates player settings.
-  const request = await service.presetToGeneratePayload(cloneBuiltInRequestPreset(), {}, {
-    model: context.getChatCompletionModel(),
-    messages: buildBuiltInPromptMessages(payload)
-  });
+  const preset = cloneBuiltInRequestPreset();
+  const model = context.getChatCompletionModel();
+  const messages = buildBuiltInPromptMessages(payload);
+  let request = await service.presetToGeneratePayload(preset, {}, { model, messages });
+  // Detect the verified legacy return shape, not function arity/version guesses.
+  if (request && typeof request === 'object' && !Array.isArray(request)
+    && Object.keys(request).every((key) => key === 'temperature')) {
+    request = buildLegacyBuiltInRequest(context, preset, model, messages);
+  }
+  if (!request || !Array.isArray(request.messages) || !request.messages.length) {
+    throw new Error('酒馆独立聊天补全接口返回的剧情消息无效；请切换酒馆预设模式或更新 SillyTavern。本次未发送模型请求。');
+  }
   // These controls are read from global power-user state by native conversion.
   // Never send them (or extension tool definitions) in this fixed request.
   for (const key of ['stop', 'logprobs', 'top_logprobs', 'logit_bias', 'tools', 'tool_choice']) delete request[key];
@@ -956,6 +1044,7 @@ export function createTavernBridge({
   return {
     version: 1,
     getCurrentChatId,
+    getRuntimeVersions: () => getRuntimeVersions(hostWindow, apiWindow),
     getTextRequestState() {
       return { active: textRequestActive, recoveryId: activeTextRecoveryId };
     },
@@ -1405,6 +1494,7 @@ export function createTavernBridge({
             textPresetMode,
             stage,
             elapsedMs: Date.now() - startedAt,
+            runtimeVersions: getRuntimeVersions(hostWindow, apiWindow),
             rawText: fullText
           });
           // 网络断开时写聊天也可能失败或久等，不能让它遮住最初的诊断。

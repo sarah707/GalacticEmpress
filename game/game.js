@@ -50,6 +50,7 @@ const toasts = document.querySelector('#toasts');
 
 let state = createDefaultState();
 let chatId = '';
+let runtimeVersions = {};
 let busy = false;
 let modalContext = null;
 let modalReturnFocus = null;
@@ -346,12 +347,15 @@ function openStory(chapter, applyPending = false) {
 
 function showError(error) {
   const message = String(error.message || error);
+  const versionInfo = message.includes('SillyTavern 版本：') && message.includes('酒馆助手版本：')
+    ? ''
+    : `<p class="small">SillyTavern 版本：${escapeHtml(runtimeVersions.sillyTavern || '无法读取')}<br>酒馆助手版本：${escapeHtml(runtimeVersions.tavernHelper || '无法读取')}</p>`;
   const modeLabel = state.settings.textPresetMode === 'builtin' ? '使用角色卡自带预设' : '使用当前酒馆预设';
   const temporaryPromptLabel = `${temporaryPromptContentEnabled ? '关闭' : '开启'}临时修改提示词内容以增加破甲率`;
   const recentContextLabel = temporaryPromptContentEnabled
     ? '已开启：下一次发送携带最近6章剧情，发送后自动关闭。'
     : '已关闭：发送时只携带最近1章剧情。';
-  showModal('剧情生成未完成', `<p>${escapeHtml(message)}</p><p class="small">本次事件和数值状态已经保留。重试会继续本次事件；无法解析的旧回复不会被再次用于恢复。</p><p class="small">当前预设模式：${modeLabel}</p><p class="small">${recentContextLabel}</p>`,
+  showModal('剧情生成未完成', `<p>${escapeHtml(message)}</p>${versionInfo}<p class="small">本次事件和数值状态已经保留。重试会继续本次事件；无法解析的旧回复不会被再次用于恢复。</p><p class="small">当前预设模式：${modeLabel}</p><p class="small">${recentContextLabel}</p>`,
     `<button class="btn secondary wide" data-action="toggle-temporary-prompt-content" aria-pressed="${temporaryPromptContentEnabled}">${temporaryPromptLabel}</button><button class="btn secondary" data-action="switch-preset-mode">切换预设模式</button><button class="btn" data-action="retry-story">重试剧情生成</button>`,
     { type: 'generation-error', message });
 }
@@ -1039,6 +1043,7 @@ async function init() {
   setLoading(true, '正在读取当前对话存档');
   try {
     const bootstrap = await fetchJson('/api/game/bootstrap');
+    runtimeVersions = bootstrap.runtimeVersions || {};
     const profile = bootstrap.playerProfile || {};
     chatId = String(bootstrap.chatId || '');
     if (!chatId) throw new Error('无法识别当前对话，请重新打开角色聊天。');

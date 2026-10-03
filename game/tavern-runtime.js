@@ -65,6 +65,7 @@
   async function bootstrapResponse() {
     return {
       chatId: bridge().getCurrentChatId(),
+      runtimeVersions: bridge().getRuntimeVersions?.() || {},
       playerProfile: await Promise.resolve(bridge().getPlayerProfile()),
       buildMode: globalThis.__GALACTIC_EMPRESS_BUILD_MODE__ || 'release'
     };
