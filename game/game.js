@@ -177,12 +177,16 @@ function renderTop() {
     ? sector.hazards.map((item) => `${item.name} ${Math.round(item.value)}`).join('，')
     : '无环境威胁';
   const attackDisabled = !state.tutorialComplete || state.ended;
+  const recruitDisabled = attackDisabled || state.conquest <= 10 || Boolean(state.pending);
   return `<section class="topbar">
     <button class="stat stat-button" type="button" data-action="show-army" ${state.ended ? 'disabled' : ''}><span>兵力</span><strong>${totalCombatPower(state.troops)}</strong></button>
     <div class="stat" data-stat="life-energy"><span>生命能量</span><strong>${Math.max(0, Math.round(Number(state.lifeEnergy) || 0))}</strong></div>
     <div class="stat"><span>宇宙占有度</span><strong>${Math.round(state.conquest)}%</strong></div>
     <div class="sector"><strong>下个星域</strong>　战斗力 ${Math.round(sector.strength)}，${escapeHtml(hazards)}</div>
-    <button class="btn attack" type="button" data-action="attack" ${attackDisabled ? 'disabled' : ''}>进攻下一个星域</button>
+    <div class="topbar-actions">
+      <button class="btn attack" type="button" data-action="attack" ${attackDisabled ? 'disabled' : ''}>进攻下一个星域</button>
+      <button class="btn" type="button" data-action="recruit" ${recruitDisabled ? 'disabled' : ''}>充实后宫</button>
+    </div>
   </section>`;
 }
 
@@ -586,6 +590,12 @@ function formatLosses(losses) {
   return lines.length ? lines.join('，') : '无';
 }
 
+async function recruitCharacter() {
+  if (busy || state.pending || state.ended || !state.tutorialComplete || state.conquest <= 10) return;
+  const generatedGene = createCharacterGene(state.conquest, { scale: 0.8 });
+  await startStory({ type: 'reinforcement', generatedGene, effect: { type: 'new-character' } });
+}
+
 async function attackSector() {
   if (state.ended || !state.tutorialComplete) return;
   const sector = state.nextSector;
@@ -922,6 +932,7 @@ app.addEventListener('click', async (event) => {
   else if (action === 'navigate') { state.currentPage = button.dataset.page; render(); }
   else if (action === 'show-army') showArmy();
   else if (action === 'attack') await attackSector();
+  else if (action === 'recruit') await recruitCharacter();
   else if (action === 'extract-gene') await requestGeneExtraction(button.dataset.id);
   else if (action === 'give-energy') await giveEnergy(button.dataset.id);
   else if (action === 'show-history') showCharacterHistory(button.dataset.id);

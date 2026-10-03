@@ -1,6 +1,6 @@
 const BOOTSTRAP_STATE_KEY = '__GALACTIC_EMPRESS_REMOTE_BOOTSTRAP_V1__';
 const VERSION_MANIFEST_URL = 'https://sarah707.github.io/GalacticEmpress/version.json';
-const FALLBACK_LOADER_URL = 'https://testingcf.jsdelivr.net/gh/sarah707/GalacticEmpress@v1.0.1/loader.js';
+const FALLBACK_LOADER_URL = 'https://testingcf.jsdelivr.net/gh/sarah707/GalacticEmpress@v1.0.2/loader.js';
 
 async function resolveLoaderUrl() {
   try {
