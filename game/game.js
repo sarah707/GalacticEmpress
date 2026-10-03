@@ -26,7 +26,7 @@ import {
   totalCombatPower,
   uid,
   withCacheBust
-} from './game-core.js?build=20261003022822';
+} from './game-core.js?build=20261003023639';
 import {
   WORLD_BUILDING,
   buildAvatarPrompt,
@@ -35,12 +35,12 @@ import {
   defaultPlayerPrompt,
   normalizeGeneratedCharacter,
   parseEventOutput
-} from './prompts.js?build=20261003022822';
-import { copyTextToClipboard } from './clipboard.js?build=20261003022822';
-import { createManualSaveSnapshot, decodeManualSaveSnapshot } from './storage.js?build=20261003022822';
-import { createLocalStore } from './local-store.js?build=20261003022822';
-import { createSaveController } from './save-controller.js?build=20261003022822';
-import { normalizePortableImageUrls } from '../storage-codec.js?build=20261003022822';
+} from './prompts.js?build=20261003023639';
+import { copyTextToClipboard } from './clipboard.js?build=20261003023639';
+import { createManualSaveSnapshot, decodeManualSaveSnapshot } from './storage.js?build=20261003023639';
+import { createLocalStore } from './local-store.js?build=20261003023639';
+import { createSaveController } from './save-controller.js?build=20261003023639';
+import { normalizePortableImageUrls } from '../storage-codec.js?build=20261003023639';
 
 const app = document.querySelector('#app');
 const modalLayer = document.querySelector('#modal-layer');
@@ -347,7 +347,7 @@ function showError(error) {
   const recentContextLabel = temporaryPromptContentEnabled
     ? '已开启：下一次发送携带最近6章剧情，发送后自动关闭。'
     : '已关闭：发送时只携带最近1章剧情。';
-  showModal('剧情生成未完成', `<p>${escapeHtml(message)}</p><p class="small">本次事件和数值状态已经保留。重试会沿用同一恢复标识，避免重复结算。</p><p class="small">当前预设模式：${modeLabel}</p><p class="small">${recentContextLabel}</p>`,
+  showModal('剧情生成未完成', `<p>${escapeHtml(message)}</p><p class="small">本次事件和数值状态已经保留。重试会继续本次事件；无法解析的旧回复不会被再次用于恢复。</p><p class="small">当前预设模式：${modeLabel}</p><p class="small">${recentContextLabel}</p>`,
     `<button class="btn secondary wide" data-action="toggle-temporary-prompt-content" aria-pressed="${temporaryPromptContentEnabled}">${temporaryPromptLabel}</button><button class="btn secondary" data-action="switch-preset-mode">切换预设模式</button><button class="btn" data-action="retry-story">重试剧情生成</button>`,
     { type: 'generation-error', message });
 }
@@ -418,7 +418,8 @@ async function runPendingStory() {
     const result = await submitAiJob(payload, '等待生成剧情');
     const text = resultText(result);
     if (!text) throw new Error('AI 返回内容为空。');
-    const parsed = parseEventOutput(text, { requiresCharacter: payload.meta.requiresCharacter });
+    const { parsed, error } = await parsePendingStoryResponse(text, payload, pending);
+    if (error) throw error;
     parsed.content = await applyDisplayRegex(parsed.content);
     parsed.displayContent = parsed.content;
     await finishStory(parsed, pending.request, result);
@@ -426,6 +427,20 @@ async function runPendingStory() {
     setLoading(false);
     render();
     showError(error);
+  }
+}
+
+async function parsePendingStoryResponse(text, payload, pending) {
+  try {
+    return { parsed: parseEventOutput(text, { requiresCharacter: payload.meta.requiresCharacter }) };
+  } catch (error) {
+    // Keep the event, but isolate the next attempt from this unusable backup.
+    // Persist both IDs before a retry can submit another generation request.
+    const recoveryId = uid('story');
+    pending.recoveryId = recoveryId;
+    pending.request.recoveryId = recoveryId;
+    await saveNow();
+    return { error };
   }
 }
 
@@ -495,23 +510,26 @@ async function finishStory(parsed, request, result = {}) {
 }
 
 async function recoverPendingGeneration() {
-  if (state.pending?.kind !== 'generation' || !state.pending.recoveryId) return false;
+  const pending = state.pending;
+  if (pending?.kind !== 'generation' || !pending.recoveryId) return false;
+  let recovery;
   try {
-    const recovery = await fetchJson('/api/story-response/recovery', {
-      method: 'POST', body: JSON.stringify({ recoveryId: state.pending.recoveryId })
+    recovery = await fetchJson('/api/story-response/recovery', {
+      method: 'POST', body: JSON.stringify({ recoveryId: pending.recoveryId })
     });
-    if (!recovery.found) return false;
-    const payload = buildEventPayload(state, state.pending.request);
-    const parsed = parseEventOutput(recovery.fullText, { requiresCharacter: payload.meta.requiresCharacter });
-    parsed.content = await applyDisplayRegex(parsed.content);
-    parsed.displayContent = parsed.content;
-    await finishStory(parsed, state.pending.request, {
-      raw: { fullText: recovery.fullText, responseSource: 'chat_backup', helperTextChanged: false }
-    });
-    return true;
   } catch {
     return false;
   }
+  if (!recovery.found) return false;
+  const payload = buildEventPayload(state, pending.request);
+  const { parsed, error } = await parsePendingStoryResponse(recovery.fullText, payload, pending);
+  if (error) return false;
+  parsed.content = await applyDisplayRegex(parsed.content);
+  parsed.displayContent = parsed.content;
+  await finishStory(parsed, pending.request, {
+    raw: { fullText: recovery.fullText, responseSource: 'chat_backup', helperTextChanged: false }
+  });
+  return true;
 }
 
 async function commitPendingEffects() {
