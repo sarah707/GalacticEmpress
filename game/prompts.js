@@ -25,7 +25,7 @@ export const NEW_CHARACTER_MODULE = `<newCharacter>
         身份：角色身份，比如“阿斯特星球皇帝”“宇宙海盗”“温恩联盟反抗军”
 		爱好：角色的个人爱好，1到2项
         外貌服饰氛围气味: 包括头发颜色，详细描述发型，眼睛颜色，皮肤颜色，面部特征，气质，身材、服装和配饰，能体现角色给人感觉的香味。注意每个角色都应该有不同非人的特质，比如脸上的鳞片、耳朵、角、虫族附肢、尾巴等。
-        头像提示词: 根据角色的外貌、发型、服饰、配饰、气质和非人特征，编写一段可以直接用于生成角色头像的完整中文提示词。必须以“请用《原神》画风结合水彩上色风格”开头，明确角色是帅气美丽的成年男性，并要求 1:1 正方形画面、0.5K、白色无文字无花纹背景、人物居中、适合 256x256 头像裁切。
+        头像提示词: 根据角色的外貌、发型、服饰、配饰、气质和非人特征，编写一段用于生成角色头像的英文提示词，字段内容必须全部使用英文。只描述角色和构图，不包含画风要求，画风前缀由程序统一拼接。明确角色是帅气美丽的成年男性，并要求 1:1 正方形画面、白色无文字无花纹背景、人物居中、适合 256x256 头像裁切。
         性格动力与社交类型: 用1个词概括其社交姿态（例如：直觉系混世魔王 / 抑郁型艺术家 / 规矩强迫症受害者 / 极度自恋的享乐主义者），并说明他处理冲突时是靠‘情绪爆发’、‘逃避’、‘直觉横冲直撞’还是‘随波逐流’。
         说话方式与台词示例: 详细描述语速、语气词、常用词汇习惯，并附带2句能体现其性格的典型台词。
         核心特质：必须由3~5个相互矛盾或反差鲜明的标签组成，形成复杂化学反应。至少包含一个矛盾反差（如“高岭之花+建立恋人关系后非常粘人”）。
@@ -40,7 +40,7 @@ export const NEW_CHARACTER_MODULE = `<newCharacter>
         "身份": "荼弥斯星域领主",
 		"爱好": "弹奏瓦尔斯琴",
         "外貌服饰氛围气味": "如极地冰川般澄澈的浅冰蓝色长发整齐拢在脑后/淡蓝色的眼眸深邃温润，眼神看似包容温和实则深不可测/肤色白皙细腻/头顶发间生有白鲸种族特有的隐蔽呼吸孔凹陷/身高204cm/体格魁梧匀称，骨架宽厚如海中山岳，常穿深海蓝收腰巡航礼服与珍珠白短披肩，佩戴露指皮质战术扣/身上带着极淡的深海微寒咸水、天然龙涎香与冷水薄荷的气息" ,
-        "头像提示词": "请用《原神》画风结合水彩上色风格画一个帅气美丽的成年男性头像。他拥有如极地冰川般澄澈的浅冰蓝色长发，长发整齐拢在脑后，淡蓝色眼眸深邃温润，肤色白皙细腻，头顶发间有白鲸种族特有的隐蔽呼吸孔凹陷。他穿深海蓝收腰巡航礼服与珍珠白短披肩，佩戴露指皮质战术扣，气质优雅、温和而深不可测。必须生成 1:1 正方形画面，请使用 0.5K 生成，背景白色且没有任何文字或花纹，人物居中，构图适合 256x256 头像裁切。",
+        "头像提示词": "Create a portrait of a handsome, beautiful adult man. He has long, pale ice-blue hair as clear as a polar glacier, neatly swept back, deep and gentle light-blue eyes, and fair, delicate skin. A subtle indentation for the blowhole characteristic of his beluga race is concealed among the hair at the top of his head. He wears a fitted deep-sea-blue formal uniform, a short pearl-white cape, and fingerless leather tactical accessories. His demeanor is elegant and gentle yet inscrutable. Generate a 1:1 square image with a plain white background, no text or patterns, and the character centered. The composition must be suitable for cropping into a 256x256 avatar.",
         "性格动力与社交类型":"优雅冷血的规矩强迫症受害者。处理冲突时靠‘情绪爆发’（在失控或规矩被践踏时）与极度理性的‘直觉横冲直撞’相结合，习惯用最精准致命的方式瞬间解决麻烦。",
         "说话方式与台词示例":"语速偏慢，平缓而富有磁性，极少使用语气词，措辞严谨冷峻，习惯使用‘效率’、‘基因缺陷’、‘肃清’等词汇。台词示例1：‘你的存在是对这片星域基因纯洁度极大的挑衅，肃清倒计时三秒。’ 台词示例2：‘不要试图用低等生物的情感打动我，在绝对的秩序面前，你的挣扎毫无意义。’",
         "核心特质": "冷酷无情的战术杀手+忠诚度极低的可疑反骨仔+建立极度亲密关系后极度偏执粘人",
@@ -522,8 +522,12 @@ export function parseEventOutput(text, options = {}) {
 
 export function buildAvatarPrompt(character) {
   const generatedPrompt = String(character?.avatarPrompt || '').trim();
-  if (generatedPrompt) return generatedPrompt;
-  return `请用《原神》画风结合水彩上色风格画一个很帅的男子的头像，注意描述里如果有负面意味的词，只能在不损害角色美貌的前提下完成，角色必须要很帅气美丽。即使提示词里包含健壮等词语也不可以画成壮汉，只能画成爽朗系帅哥。必须生成 1:1 的正方形画面，整张图本身就是正方形，不能是横图或竖图。请使用 0.5K 生成。背景白色且没有任何文字或花纹，人物居中，构图适合 256x256 头像裁切。
+  if (generatedPrompt) {
+    // Preserve complete prompts from older saves without duplicating their style prefix.
+    if (/^(?:Use the Genshin Impact art style|请用《原神》画风)/.test(generatedPrompt)) return generatedPrompt;
+    return `Use the Genshin Impact art style combined with watercolor coloring. ${generatedPrompt}`;
+  }
+  return `请用《原神》画风结合水彩上色风格画一个很帅的男子的头像，注意描述里如果有负面意味的词，只能在不损害角色美貌的前提下完成，角色必须要很帅气美丽。即使提示词里包含健壮等词语也不可以画成壮汉，只能画成爽朗系帅哥。必须生成 1:1 的正方形画面，整张图本身就是正方形，不能是横图或竖图。背景白色且没有任何文字或花纹，人物居中，构图适合 256x256 头像裁切。
 角色描述：
 姓名：${character?.name || '无'}
 性别：${character?.gender || '男'}
@@ -533,5 +537,7 @@ export function buildAvatarPrompt(character) {
 }
 
 export function buildExportedAvatarPrompt(character) {
-  return buildAvatarPrompt(character).replace('请用《原神》画风', '请用乙女游戏画风');
+  return buildAvatarPrompt(character)
+    .replace(/^Use the Genshin Impact art style/, 'Use the otome game art style')
+    .replace('请用《原神》画风', '请用乙女游戏画风');
 }
