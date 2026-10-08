@@ -87,6 +87,7 @@ export function createDefaultState(playerProfile = {}) {
     settings: {
       textPresetMode: 'tavern',
       imageEnabled: true,
+      promptStrengthEnabled: false,
       debugPrompts: globalThis.__GALACTIC_EMPRESS_BUILD_MODE__ === 'github'
     }
   };
@@ -121,7 +122,7 @@ function compactProgress(state, { pending = state.pending } = {}) {
       'tutorialComplete', 'introChapterId', 'ended']),
     meta: pick(state.meta, ['runId', 'createdAt', 'updatedAt']),
     player: pick(state.player, ['name', 'appearance', 'personality', 'prompt']),
-    settings: pick(state.settings, ['textPresetMode', 'imageEnabled']),
+    settings: pick(state.settings, ['textPresetMode', 'imageEnabled', 'promptStrengthEnabled']),
     nextSector: state.nextSector ? {
       ...pick(state.nextSector, ['id', 'forConquest', 'balanceVersion', 'strength']),
       hazards: (state.nextSector.hazards || []).map((hazard) => pick(hazard, ['name', 'value']))

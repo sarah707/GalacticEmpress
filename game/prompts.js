@@ -424,7 +424,7 @@ export function buildEventPayload(state, request = {}) {
   const promptCharacters = baseSpec.characterMode === 'all'
     ? (state.characters || [])
     : baseSpec.characterMode === 'selected' ? requestedCharacters : [];
-  const recent = (state.chapters || []).slice(request.useExtendedRecentContext === true ? -6 : -1);
+  const recent = (state.chapters || []).slice(state.settings?.promptStrengthEnabled === true ? -6 : -1);
   const playerName = state.player?.name || '<user>';
   const conquestStatus = `当前<user>统治了宇宙的${clampInt(state.conquest, 0, 100)}%。`;
   const history = (state.history || []).map((item) => typeof item === 'string' ? item : item?.text).filter(Boolean);

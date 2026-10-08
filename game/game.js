@@ -55,7 +55,7 @@ let busy = false;
 let modalContext = null;
 let modalReturnFocus = null;
 let storageErrorShown = false;
-let temporaryPromptContentEnabled = false;
+
 const avatarJobs = new Set();
 const localStore = createLocalStore();
 const saves = createSaveController({
@@ -278,6 +278,33 @@ function renderTemplatePage() {
   </section>`;
 }
 
+function promptStrengthLabel() {
+  return `${state.settings.promptStrengthEnabled ? '关闭' : '开启'}破甲力度`;
+}
+
+function promptStrengthStatus() {
+  return state.settings.promptStrengthEnabled
+    ? '已开启：发送时携带最近6章剧情。'
+    : '已关闭：发送时只携带最近1章剧情。';
+}
+
+function promptStrengthButton() {
+  return `<button class="btn secondary wide" type="button" data-action="toggle-prompt-strength" aria-pressed="${state.settings.promptStrengthEnabled}">${promptStrengthLabel()}</button>`;
+}
+
+function togglePromptStrength() {
+  state.settings.promptStrengthEnabled = !state.settings.promptStrengthEnabled;
+  // Update only this control so unsaved preset/player prompt edits stay intact.
+  const button = app.querySelector('[data-action="toggle-prompt-strength"]');
+  if (button) {
+    button.textContent = promptStrengthLabel();
+    button.setAttribute('aria-pressed', String(state.settings.promptStrengthEnabled));
+  }
+  const status = app.querySelector('[data-prompt-strength-status]');
+  if (status) status.textContent = promptStrengthStatus();
+  queueSave();
+}
+
 function renderSettingsPage() {
   const prompt = state.player.prompt || defaultPlayerPrompt(state.player);
   return `<section class="panel content-panel settings-grid">
@@ -286,6 +313,7 @@ function renderSettingsPage() {
         <option value="tavern" ${state.settings.textPresetMode === 'tavern' ? 'selected' : ''}>使用当前酒馆预设</option>
         <option value="builtin" ${state.settings.textPresetMode === 'builtin' ? 'selected' : ''}>使用角色卡自带预设</option>
       </select></div>
+      <div class="field">${promptStrengthButton()}<span class="small" data-prompt-strength-status>${promptStrengthStatus()}</span></div>
       <div class="field"><label>主角提示词</label><textarea name="playerPrompt" rows="8">${escapeHtml(prompt)}</textarea><span class="small">其中的 &lt;user&gt; 会在发送时替换为主角名。</span></div>
       <button class="btn" type="submit">保存设置</button>
       <button class="btn secondary" type="button" data-action="reset-player-prompt">恢复默认主角提示词</button>
@@ -351,12 +379,9 @@ function showError(error) {
     ? ''
     : `<p class="small">SillyTavern 版本：${escapeHtml(runtimeVersions.sillyTavern || '无法读取')}<br>酒馆助手版本：${escapeHtml(runtimeVersions.tavernHelper || '无法读取')}</p>`;
   const modeLabel = state.settings.textPresetMode === 'builtin' ? '使用角色卡自带预设' : '使用当前酒馆预设';
-  const temporaryPromptLabel = `${temporaryPromptContentEnabled ? '关闭' : '开启'}临时修改提示词内容以增加破甲率`;
-  const recentContextLabel = temporaryPromptContentEnabled
-    ? '已开启：下一次发送携带最近6章剧情，发送后自动关闭。'
-    : '已关闭：发送时只携带最近1章剧情。';
+  const recentContextLabel = promptStrengthStatus();
   showModal('剧情生成未完成', `<p>${escapeHtml(message)}</p>${versionInfo}<p class="small">本次事件和数值状态已经保留。重试会继续本次事件；无法解析的旧回复不会被再次用于恢复。</p><p class="small">当前预设模式：${modeLabel}</p><p class="small">${recentContextLabel}</p>`,
-    `<button class="btn secondary wide" data-action="toggle-temporary-prompt-content" aria-pressed="${temporaryPromptContentEnabled}">${temporaryPromptLabel}</button><button class="btn secondary" data-action="switch-preset-mode">切换预设模式</button><button class="btn" data-action="retry-story">重试剧情生成</button>`,
+    `${promptStrengthButton()}<button class="btn secondary" data-action="switch-preset-mode">切换预设模式</button><button class="btn" data-action="retry-story">重试剧情生成</button>`,
     { type: 'generation-error', message });
 }
 
@@ -418,11 +443,7 @@ async function runPendingStory() {
     // A previous attempt may have finished after the failure dialog appeared.
     // Consume its durable backup before starting another paid generation.
     if (await recoverPendingGeneration()) return;
-    const payload = buildEventPayload(state, {
-      ...pending.request, useExtendedRecentContext: temporaryPromptContentEnabled
-    });
-    // Consume only when submitting a new story request, after backup recovery.
-    temporaryPromptContentEnabled = false;
+    const payload = buildEventPayload(state, pending.request);
     const result = await submitAiJob(payload, '等待生成剧情');
     const text = resultText(result);
     if (!text) throw new Error('AI 返回内容为空。');
@@ -860,7 +881,6 @@ async function manualLoad(index) {
       method: 'POST', body: JSON.stringify({ data: decoded })
     });
     state = patchState(resolved.data);
-    temporaryPromptContentEnabled = false;
     state.manualSaves = slots;
     render();
     await saveNow();
@@ -958,6 +978,7 @@ app.addEventListener('click', async (event) => {
   else if (action === 'clear-slot') { state.templateSlots[Number(button.dataset.slot)] = null; render(); queueSave(); }
   else if (action === 'add-slot') await addTemplateSlot();
   else if (action === 'create-soldiers') await createSoldiers();
+  else if (action === 'toggle-prompt-strength') togglePromptStrength();
   else if (action === 'reset-player-prompt') { state.player.prompt = defaultPlayerPrompt(state.player); render(); queueSave(); }
   else if (action === 'open-image-settings') await fetchJson('/api/image-setup', { method: 'POST', body: '{}' }).catch((error) => toast(error.message, 'error'));
   else if (action === 'check-image-status') {
@@ -993,9 +1014,9 @@ modalLayer.addEventListener('click', async (event) => {
     hideModal();
     if (shouldApply && !state.tutorialComplete && chapterId === state.introChapterId) await completeTutorial();
     else if (shouldApply) await commitPendingEffects();
-  } else if (action === 'toggle-temporary-prompt-content') {
+  } else if (action === 'toggle-prompt-strength') {
     if (modalContext?.type !== 'generation-error') return;
-    temporaryPromptContentEnabled = !temporaryPromptContentEnabled;
+    togglePromptStrength();
     showError(new Error(modalContext.message));
   } else if (action === 'switch-preset-mode') {
     const message = modalContext?.message || '剧情生成未完成。';
