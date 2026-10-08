@@ -30,7 +30,7 @@ export const NEW_CHARACTER_MODULE = `<newCharacter>
         说话方式与台词示例: 详细描述语速、语气词、常用词汇习惯，并附带2句能体现其性格的典型台词。
         核心特质：必须由3~5个相互矛盾或反差鲜明的标签组成，形成复杂化学反应。至少包含一个矛盾反差（如“高岭之花+建立恋人关系后非常粘人”）。
         人物小传：将故事开始前角色的成长经历写一个100字的人物小传。
-        性爱偏好：角色在性爱中喜欢使用的场景和姿势、道具等，因为是虫族题材所以可以很出格，角色可以喜欢S或M要素。注意角色是男性，不要给他女性才会有的性爱偏好。
+        性爱偏好：角色在性爱中喜欢使用的场景和姿势、道具等，因为是虫族题材所以可以很出格\${characteradd1}。注意角色是男性，不要给他女性才会有的性爱偏好。
         阴茎描述：角色的阴茎外观。适当增加非人要素比如多根，结构异常，成结等，但不要会让人觉得疼痛的要素。
     范例：
     {
@@ -212,9 +212,17 @@ export const OUTPUT_FORMAT = `<outputFormat>
     </newLocation>
 </outputFormat>`;
 
-function buildOutputFormat(requiresCharacter) {
+export function chooseCharacterAddition(random = Math.random) {
+  const roll = Math.min(0.999999999, Math.max(0, Number(random()) || 0));
+  if (roll < 0.8) return '';
+  if (roll < 0.9) return '，角色可以喜欢S要素';
+  return '，角色可以喜欢M要素';
+}
+
+function buildOutputFormat(requiresCharacter, random = Math.random) {
   if (!requiresCharacter) return OUTPUT_FORMAT;
-  return OUTPUT_FORMAT.replace('\n</outputFormat>', `\n\n${NEW_CHARACTER_MODULE}\n</outputFormat>`);
+  const characterModule = NEW_CHARACTER_MODULE.replaceAll('${characteradd1}', chooseCharacterAddition(random));
+  return OUTPUT_FORMAT.replace('\n</outputFormat>', `\n\n${characterModule}\n</outputFormat>`);
 }
 
 export const WRITING_POINTS = `<writingPoints>
@@ -453,7 +461,7 @@ export function buildEventPayload(state, request = {}) {
       historySystemInstruction: expand(`<History>\n${history.length ? history.join('\n') : '无'}\n</History>`),
       assistantInstructions: recent.map((chapter) => expand(chapterAsAssistant(chapter))),
       locationInstruction: expand(locations.join('\n\n')),
-      outputFormatInstruction: expand(buildOutputFormat(baseSpec.requiresCharacter)),
+      outputFormatInstruction: expand(buildOutputFormat(baseSpec.requiresCharacter, request.random)),
       writingPointsInstruction: expand(WRITING_POINTS)
     },
     meta: { type, requiresCharacter: baseSpec.requiresCharacter }
