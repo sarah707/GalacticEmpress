@@ -506,6 +506,10 @@ export function geneExtractionLoveGain(random = Math.random) {
   return Math.floor(Math.max(0, Math.min(0.999999999, Number(random()) || 0)) * 40) + 1;
 }
 
+export function godateLoveGain(random = Math.random) {
+  return Math.floor(Math.max(0, Math.min(0.999999999, Number(random()) || 0)) * 26) + 5;
+}
+
 export function shouldTriggerMultiGene(random = Math.random) {
   const roll = Math.max(0, Math.min(0.999999999, Number(random()) || 0));
   return roll < MULTI_GENE_CHANCE;

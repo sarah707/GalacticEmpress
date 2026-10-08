@@ -359,6 +359,13 @@ export function chooseCharacterPerspective(random = Math.random) {
     : '可以在小传里写他最初对<user>的看法';
 }
 
+export function chooseGodateOpeningPrompt(primary, random = Math.random) {
+  const roll = Math.min(0.999999999, Math.max(0, Number(random()) || 0));
+  return roll < 0.7
+    ? `剧情开始时<user>主动前来找${primary}，原因请你自己设计一下`
+    : `剧情开始时<user>是因为意外和${primary}遇到了一起或因为某些原因被动需要和${primary}待在一起`;
+}
+
 function eventSpec(type, context = {}) {
   const selected = context.characters || [];
   const primary = selected[0]?.name || '选定角色';
@@ -366,9 +373,10 @@ function eventSpec(type, context = {}) {
   const writecontent = type === 'gene' ? chooseGeneWritingFocus(context.random) : '';
   const genepromptadd1 = type === 'gene' ? chooseGeneReflectionPrompt(selected[0], context.random) : '';
   const genepromptadd2 = type === 'gene' ? chooseGeneOpeningPrompt(selected[0]) : '';
+  const godateadd1 = type === 'godate' ? chooseGodateOpeningPrompt(primary, context.random) : '';
   const characterPerspective = type === 'conquest' ? chooseCharacterPerspective(context.random) : '';
   const geneDescription = describeGene(context.generatedGene);
-  const extractionSettlement = selected.length
+  const extractionSettlement = ['gene', 'multiGene'].includes(type) && selected.length
     ? `\n本次程序结算信息：${selected.map((character) => {
       const effect = geneExtractionEffect(character);
       return `<user>将获得${character.name}的生命能量${effect.lifeEnergy}`;
@@ -389,7 +397,11 @@ function eventSpec(type, context = {}) {
     },
     gene: {
       characterMode: 'selected', requiresCharacter: false,
-      prompt: `请编写<user>在${primary}的房间${genepromptadd2}（注意这里是正常的对话，不要略写成“她表示”这样的略写，对话要体现出<user>的性格特征）。要深入刻画角色的内心对这件事的看法和对<user>的感情，${genepromptadd1}要写出角色魅力和情感的拉扯。做爱描写要细腻并贴合角色性格。**不用**每次都提到<user>获得了生命能量的事，每次都说的话容易变得流程化不好看。本章重点：${writecontent}可以思考在剧情里加入一些生活、爱好、对未来的看法之类的交流来拓展剧情。做爱后的对话要有事后感，不要立刻切换话题。注意不要使用和之前章节类似的对话。结尾要结得很干净，文字里不要牵扯任何具体数字。${extractionSettlement}`
+      prompt: `请编写<user>在${primary}的房间${genepromptadd2}（注意这里是正常的对话，不要略写成“她表示”这样的略写，对话要体现出<user>的性格特征）。要深入刻画角色的内心对这件事的看法和对<user>的感情，${genepromptadd1}要写出角色魅力和情感的拉扯。做爱描写要细腻并贴合角色性格。**不用**每次都提到<user>获得了生命能量的事，每次都说的话容易变得流程化不好看。本章重点：${writecontent}可以思考在剧情里加入一些生活、爱好、对未来的看法之类的交流来拓展剧情，查看之前<user>和${primary}的互动履历，尽量让剧情是对之前话题或行动的延续推进。做爱后的对话要有事后感，不要立刻切换话题。注意不要使用和之前章节类似的对话。结尾要结得很干净，文字里不要牵扯任何具体数字。${extractionSettlement}`
+    },
+	godate: {
+      characterMode: 'selected', requiresCharacter: false,
+      prompt: `请编写<user>和${primary}共处一段时间的互动剧情。${godateadd1}。要深入刻画角色的内心对这件事的看法和对<user>的感情，要写出角色魅力和情感的拉扯。做爱描写要细腻并贴合角色性格。查看之前<user>和${primary}的互动履历，尽量让剧情是对之前话题或行动的延续推进。剧情里根据角色的过往关系可以有亲吻和爱抚，但不能有做爱。注意不要使用和之前章节类似的对话。结尾要结得很干净，文字里不要牵扯任何具体数字。${extractionSettlement}`
     },
     multiGene: {
       characterMode: 'selected', requiresCharacter: false,

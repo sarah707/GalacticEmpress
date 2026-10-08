@@ -16,6 +16,7 @@ import {
   formatGene,
   geneExtractionEffect,
   geneExtractionLoveGain,
+  godateLoveGain,
   isFixedConquestEvent,
   patchState,
   requiredReinforcementGene,
@@ -233,6 +234,7 @@ function renderCharacterCard(character, index) {
       <p class="detail bio">${escapeHtml(character.bio || '无')}</p>
       <div class="char-actions">
         <button class="btn" data-action="extract-gene" data-id="${character.id}" ${disableGeneExtraction ? 'disabled' : ''}>获取基因</button>
+        <button class="btn secondary" data-action="godate" data-id="${character.id}" ${disableOtherInteraction || state.pending ? 'disabled' : ''}>共处</button>
         <button class="btn secondary" data-action="give-energy" data-id="${character.id}" ${disableOtherInteraction || state.lifeEnergy < 1000 ? 'disabled' : ''}>赋予生命能量</button>
         <button class="btn secondary" data-action="show-history" data-id="${character.id}" ${character.storyIds?.length ? '' : 'disabled'}>过往剧情</button>
       </div>
@@ -566,6 +568,14 @@ async function commitPendingEffects() {
   if (pending?.kind !== 'effects') return;
   if (pending.eventType === 'gene' || pending.eventType === 'multiGene') {
     for (const characterId of pending.characterIds) applyGeneExtraction(characterId);
+  } else if (pending.eventType === 'godate') {
+    const character = state.characters.find((item) => item.id === pending.characterIds[0]);
+    if (character && character.live !== false && character.health > 0) {
+      const loveBefore = clampInt(character.love, 0, 100);
+      character.love = Math.min(100, loveBefore + clampInt(pending.effect?.loveGain, 5, 30));
+      const loveGained = character.love - loveBefore;
+      if (loveGained > 0) toast(`${character.name}的爱情度增加 ${loveGained}`, 'ok');
+    }
   } else if (pending.eventType === 'victory') {
     state.ended = true;
     state.phase = 'ended';
@@ -707,6 +717,16 @@ async function revealIntroStory(characterId) {
     toast(`最初剧情暂时无法显示：${error.message}`, 'error');
     return false;
   }
+}
+
+async function requestGodate(characterId) {
+  if (busy || state.pending || state.ended || !state.tutorialComplete) return;
+  const selected = state.characters.find((item) => item.id === characterId);
+  if (!selected || selected.live === false || selected.health <= 0) return;
+  await startStory({
+    type: 'godate', characterIds: [selected.id],
+    effect: { type: 'godate', loveGain: godateLoveGain() }
+  });
 }
 
 async function requestGeneExtraction(characterId) {
@@ -958,6 +978,7 @@ app.addEventListener('click', async (event) => {
   else if (action === 'attack') await attackSector();
   else if (action === 'recruit') await recruitCharacter();
   else if (action === 'extract-gene') await requestGeneExtraction(button.dataset.id);
+  else if (action === 'godate') await requestGodate(button.dataset.id);
   else if (action === 'give-energy') await giveEnergy(button.dataset.id);
   else if (action === 'show-history') showCharacterHistory(button.dataset.id);
   else if (action === 'view-avatar') openAvatarPreview(button.dataset.id, button);
