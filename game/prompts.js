@@ -535,7 +535,8 @@ export function parseEventOutput(text, options = {}) {
     content,
     history: history.replace(/\s+/g, ' ').trim(),
     location,
-    character: characterRaw ? parseCharacterJson(characterRaw) : null,
+    // Existing-character events must never accept AI-created replacement profiles.
+    character: options.requiresCharacter !== false && characterRaw ? parseCharacterJson(characterRaw) : null,
     fullText: String(text || '')
   };
 }

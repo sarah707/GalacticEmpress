@@ -477,7 +477,7 @@ async function parsePendingStoryResponse(text, payload, pending) {
 
 async function finishStory(parsed, request, result = {}) {
   let newCharacter = null;
-  if (parsed.character) {
+  if (parsed.character && ['start', 'conquest', 'reinforcement'].includes(request.type)) {
     const isStart = request.type === 'start';
     const gene = isStart ? { combat: 1 } : request.generatedGene;
     newCharacter = {

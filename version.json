@@ -1,9 +1,9 @@
 {
-  "version": "1.0.7",
+  "version": "1.0.8",
   "mode": "release",
-  "buildId": "20261008150259",
-  "releaseRef": "v1.0.7",
-  "loaderUrl": "https://testingcf.jsdelivr.net/gh/sarah707/GalacticEmpress@v1.0.7/loader.js",
-  "bootstrapUrl": "https://testingcf.jsdelivr.net/gh/sarah707/GalacticEmpress@v1.0.7/bootstrap.js",
-  "builtAt": "2026-10-08T15:02:59.131Z"
+  "buildId": "20261010041811",
+  "releaseRef": "v1.0.8",
+  "loaderUrl": "https://testingcf.jsdelivr.net/gh/sarah707/GalacticEmpress@v1.0.8/loader.js",
+  "bootstrapUrl": "https://testingcf.jsdelivr.net/gh/sarah707/GalacticEmpress@v1.0.8/bootstrap.js",
+  "builtAt": "2026-10-10T04:18:11.475Z"
 }
